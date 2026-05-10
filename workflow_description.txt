@@ -1,0 +1,30 @@
+
+AI Engineering Workflow
+========================
+
+1. INGESTION  (daily, via script or Airflow task)
+   - Download OHLCV CSVs from exchange APIs / data vendors
+   - Append to PostgreSQL table: raw.stock_prices
+
+2. FEATURE ENGINEERING  (dbt or Python job)
+   raw.stock_prices  ->  features.ohlcv          (cleaned)
+                     ->  features.technical       (SMA, RSI, MACD, BB)
+                     ->  features.fundamental     (P/E, dividend yield — quarterly)
+
+3. TRAINING  (weekly or on-demand)
+   - Retrain LSTM models on latest N days of data
+   - Evaluate MAE / RMSE on held-out test window
+   - Save model artefacts to saved_models/
+
+4. INFERENCE  (daily, after market close)
+   - Load latest WINDOW rows from features.technical
+   - Call FastAPI /predict/price endpoint
+   - Write predictions to predictions.daily_forecast
+
+5. SERVING  (always-on)
+   - FastAPI  : REST endpoint for programmatic access  (uvicorn main:app)
+   - Streamlit: human-readable dashboard               (streamlit run streamlit_app.py)
+
+6. MONITORING
+   - Track prediction MAE vs realised prices each day
+   - Alert if MAE rises > 2x historical baseline (model drift)
