@@ -34,7 +34,7 @@ def _add_indicators(df):
 
 @st.cache_resource
 def load_artifacts():
-    model  = tf.keras.models.load_model("saved_models/vn_price_model")
+    model  = tf.keras.models.load_model("saved_models/vn_price_model.keras")
     scaler = pickle.load(open("saved_models/scaler_price.pkl", "rb"))
     meta   = pickle.load(open("saved_models/meta.pkl", "rb"))
     return model, scaler, meta["WINDOW"], meta["VN_FEATS"]
