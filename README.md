@@ -7,7 +7,9 @@
 
 ## Project Overview
 
-This project applies Long Short-Term Memory (LSTM) neural networks to forecast stock prices in two markets (NASDAQ/AAPL and Vietnam/HPG), generate buy/sell trading signals, score and rank stocks for portfolio construction, and expose predictions through a FastAPI REST server and a Streamlit web dashboard.
+This project applies Long Short-Term Memory (LSTM) neural networks to forecast stock prices in two markets (NASDAQ/AAPL and Vietnam/HPG), generate buy/sell/hold trading signals, rank stocks for portfolio construction using mean-variance optimization, and expose predictions through a FastAPI REST server and a Streamlit web dashboard.
+
+All prediction tasks use **log-returns** `r_t = log(P_t / P_{t-1})` as the target variable rather than raw prices, ensuring stationarity across different price regimes.
 
 ---
 
@@ -17,27 +19,25 @@ This project applies Long Short-Term Memory (LSTM) neural networks to forecast s
 230163-DL4AI-project/
 ├── 230163_project_notebook.ipynb   # Main Jupyter notebook (all tasks)
 ├── main.py                         # FastAPI REST server (Task 5.1)
-├── streamlit_app.py                # Streamlit web app (Task 5.2)
-├── workflow_description.txt        # AI engineering workflow notes (Task 5.3)
-├── patch_notebook.py               # Utility: patch notebook cell outputs
-├── run_notebook.py                 # Utility: execute notebook non-interactively
-├── test_t13.py                     # Unit test for Task 1.3 multi-step forecasting
-├── test_t13_output.png             # Test output screenshot
+├── streamlit_app.py                # Streamlit web dashboard (Task 5.2)
+├── pipeline.html                   # AI engineering workflow (visual, Task 5.3)
+├── workflow_description.txt        # Plain-text workflow summary (Task 5.3)
+├── .gitignore
 ├── data_nasdaq_csv/
 │   └── csv/                        # Per-ticker OHLCV CSVs (~1 523 NASDAQ companies)
 ├── data-vn-20230228/
 │   ├── stock-historical-data/      # Per-ticker OHLCV CSVs (Vietnam exchange)
-│   ├── dividend-history/           # Dividend payment records (Task 2.4)
-│   ├── financial-ratio/            # Quarterly financial ratios (Task 2.4)
+│   ├── dividend-history/           # Dividend payment records
+│   ├── financial-ratio/            # Quarterly financial ratios
 │   ├── industry-analysis/          # Sector/industry metadata
 │   ├── companies.csv               # Vietnam company master list
 │   └── ticker-overview.csv         # Market-cap & sector overview
-└── saved_models/
-    ├── vn_price_model.keras        # Trained VN price-prediction LSTM
-    ├── vn_signal_model.keras       # Trained VN buy/sell/hold signal LSTM
-    ├── scaler_price.pkl            # MinMaxScaler for price features
-    ├── scaler_signal.pkl           # MinMaxScaler for signal features
-    └── meta.pkl                    # Window size, feature list metadata
+└── saved_models/                   # Generated after running notebook (git-ignored)
+    ├── vn_price_model.keras
+    ├── vn_signal_model.keras
+    ├── scaler_price.pkl
+    ├── scaler_signal.pkl
+    └── meta.pkl
 ```
 
 ---
@@ -46,12 +46,14 @@ This project applies Long Short-Term Memory (LSTM) neural networks to forecast s
 
 ### Requirements
 
-```bash
-pip install tensorflow pandas numpy scikit-learn matplotlib plotly \
-            fastapi uvicorn pydantic streamlit scipy ta
-```
+- **Python 3.12** (TensorFlow does not support Python 3.13+)
 
-> Python 3.10+ and TensorFlow 2.21 (Keras 3) are recommended. GPU optional.
+```bash
+python -m venv .venv
+.venv\Scripts\Activate.ps1          # Windows PowerShell
+pip install tensorflow pandas numpy scikit-learn matplotlib seaborn \
+            plotly fastapi uvicorn pydantic streamlit scipy
+```
 
 ---
 
@@ -63,84 +65,84 @@ pip install tensorflow pandas numpy scikit-learn matplotlib plotly \
 jupyter notebook 230163_project_notebook.ipynb
 ```
 
-Run cells sequentially. Tasks are labelled `t11`, `t12`, `t13`, `t14`, `t21`–`t24`, `t30`–`t32`, `t41`–`t43`, `t51`–`t53`. The notebook trains models and saves artefacts to `saved_models/` before the API and Streamlit app can be used.
+Run cells sequentially from top to bottom. The notebook trains and saves models to `saved_models/` — this must be done before running the API or Streamlit app.
+
+Key cell IDs: `imports` → `paths` → `utils` → `nasdaq-eda` → `t11`–`t14` → `vn-eda` → `t21`–`t24` → `t3-*` → `t41`–`t43` → `t51-save` → `t51-api` → `t52` → `t53` → `key-findings`
 
 ### 2. FastAPI REST Server (Task 5.1)
 
 ```bash
+.venv\Scripts\Activate.ps1
 uvicorn main:app --reload
 ```
 
-API available at `http://127.0.0.1:8000`. Interactive docs at `http://127.0.0.1:8000/docs`.
+Available at `http://127.0.0.1:8000`. Interactive Swagger docs at `http://127.0.0.1:8000/docs`.
 
-Key endpoints:
-
-| Method | Path | Description |
-|--------|------|-------------|
-| `GET` | `/health` | Server health, window size, feature count |
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/health` | Server status, window size, feature count |
 | `POST` | `/predict/price` | Next-day close price & log-return prediction |
 
-### 3. Streamlit Web App (Task 5.2)
+### 3. Streamlit Web Dashboard (Task 5.2)
 
 ```bash
+.venv\Scripts\Activate.ps1
 streamlit run streamlit_app.py
 ```
 
-App available at `http://localhost:8501`. Select a Vietnam ticker from the sidebar, view the candlestick chart with SMA20 overlay, and click **Predict next-day close price** to run the LSTM model in real time.
+Available at `http://localhost:8501`. Select a Vietnam ticker, view the candlestick chart with SMA20 overlay, and click **Predict next-day close price** to run the LSTM in real time.
 
 ---
 
 ## Task Summary
 
-| Task | Description | Target Variable | Model |
-|------|-------------|-----------------|-------|
-| 1.1 | AAPL next-day price prediction | Log-return (day+1) | 2-layer LSTM |
-| 1.2 | AAPL k-th day prediction (k=3, 7) | Log-return (day+k) | 2-layer LSTM per k |
-| 1.3 | AAPL 7 consecutive days | Log-return (day+1…+7) | One LSTM per horizon |
-| 1.4 | Time-series cross-validation | Log-return | Rolling-window CV |
-| 2.1 | HPG (Vietnam) next-day prediction | Log-return (day+1) | 2-layer LSTM |
-| 2.2 | HPG k-th day prediction (k=3, 7) | Log-return (day+k) | 2-layer LSTM per k |
-| 2.3 | HPG 7 consecutive days | Log-return (day+1…+7) | One LSTM per horizon |
-| 2.4 | Dividend & financial data analysis | — | EDA / feature study |
-| 3.0 | Label generation (buy/sell/hold) | 3-class signal | Symmetric window |
-| 3.1 | Trading signal model training | 3-class | LSTM + class weights |
-| 3.2 | Signal evaluation & backtesting | — | Accuracy / F1 |
-| 4.1 | Profit scoring of 20 VN stocks | Cumulative return rank | Signal model |
-| 4.2 | Risk metrics | Volatility, Sharpe, max drawdown | Statistical |
-| 4.3 | Portfolio optimization | Max Sharpe weights | Mean-variance (scipy) |
-| 5.1 | FastAPI REST server | — | Serving layer |
+| Task | Description | Target | Model |
+|------|-------------|--------|-------|
+| 1.1 | AAPL next-day prediction | Log-return day+1 | 2-layer LSTM |
+| 1.2 | AAPL k-th day prediction (k=3,7) | Log-return day+k | 2-layer LSTM per k |
+| 1.3 | AAPL 7 consecutive days | Log-return day+1…+7 | One LSTM per horizon |
+| 1.4 | Time-series cross-validation (5-fold) | Log-return | Rolling-window CV |
+| 2.1 | HPG (Vietnam) next-day prediction | Log-return day+1 | 2-layer LSTM |
+| 2.2 | HPG k-th day prediction (k=3,7) | Log-return day+k | 2-layer LSTM per k |
+| 2.3 | HPG 7 consecutive days | Log-return day+1…+7 | One LSTM per horizon |
+| 2.4 | Dividend & financial ratio analysis | — | EDA |
+| 3.0 | Buy/sell/hold label generation | 3-class signal | Symmetric window |
+| 3.1 | Trading signal classifier | 3-class | LSTM + class weights |
+| 3.2 | Signal evaluation | — | Accuracy / F1 |
+| 4.1 | Profit scoring (20 VN stocks) | Predicted return rank | LSTM |
+| 4.2 | Risk management | Volatility, Sharpe, max drawdown | Statistical |
+| 4.3 | Portfolio optimization | Max-Sharpe weights | Mean-variance (scipy) |
+| 5.1 | FastAPI REST server | — | Serving |
 | 5.2 | Streamlit web dashboard | — | Interactive UI |
-| 5.3 | AI engineering workflow design | — | Architecture diagram |
+| 5.3 | AI engineering workflow (XML) | — | Architecture design |
 
 ---
 
-## Model Architecture (Summary)
+## Model Architecture
 
 ```
-Input (batch, 45, n_features)
-  → LSTM(64, return_sequences=True) → BatchNorm → Dropout(0.2)
-  → LSTM(32, return_sequences=False) → BatchNorm → Dropout(0.2)
-  → Dense(1)   # log-return regression
+Input  (batch, 45, n_features)
+  → LSTM(64, return_sequences=True, recurrent_dropout=0.1)
+  → BatchNormalization → Dropout(0.2)
+  → LSTM(32, recurrent_dropout=0.1)
+  → Dropout(0.1)
+  → Dense(1)                          # log-return regression
 ```
 
-- Features: 12 for NASDAQ (OHLCV + Adj Close + SMA5 + SMA20 + RSI14 + MACD + MACD_H + BB_W), 11 for Vietnam (no Adj Close)
-- Target: `log(Close_t+k / Close_t)` — stationary, zero-mean
-- Scaler: `MinMaxScaler` fitted on training split only
+- **Loss:** Huber (delta=0.02) — robust to large return spikes
+- **Optimizer:** Adam (lr=5e-4)
+- **Callbacks:** EarlyStopping (patience=5), ReduceLROnPlateau (factor=0.5, patience=3)
+- **Window:** 45 trading days (~2 months of context)
+- **Split:** 70% train / 15% validation / 15% test (chronological, no shuffling)
+- **Features (NASDAQ):** Open, High, Low, Close, Volume, Adjusted Close, SMA-5, SMA-20, RSI-14, MACD, MACD-H, BB-Width (12 total)
+- **Features (Vietnam):** Same minus Adjusted Close (11 total)
+- **Target:** `log(Close_t / Close_{t-1})` — stationary across price regimes
 
 ---
 
-## Known Results
+## Design Notes
 
-| Task | Metric | Value |
-|------|--------|-------|
-| 1.3 day+1 | MAE (log-return) | 0.38 |
-| 1.3 day+7 | MAE (log-return) | ~0.52 |
-| 3.1 VN signals | 3-class accuracy | see notebook |
-
----
-
-## Notes
-
-- The notebook must be executed before running the API or Streamlit app (models must be saved).
-- Data cutoff: 2018-01-01. Chronological split 70 / 15 / 15 %.
-- No data leakage: scalers are fitted on the training split only.
+- **Why log-returns?** Raw scaled prices are non-stationary — a model trained on historical low prices fails to generalize to a bull-run or crash regime. Log-returns are approximately zero-mean and constant-variance regardless of price level.
+- **Why Huber loss?** MSE forces the model to chase rare extreme spikes (±15–20% crashes). Huber switches to MAE for large errors, so the model focuses on typical days instead.
+- **No data leakage:** `MinMaxScaler` is fitted on the training split only and applied to validation/test.
+- **Direction accuracy** (`Dir`) is reported alongside MAE/RMSE — for trading, sign prediction above 52% is more useful than a low MAE on near-zero returns.
