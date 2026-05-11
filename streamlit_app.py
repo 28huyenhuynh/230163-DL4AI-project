@@ -10,7 +10,7 @@ st.set_page_config(page_title="VN Stock Predictor", layout="wide")
 st.title("Vietnam Stock Price Predictor")
 st.caption("LSTM-based next-day close price prediction")
 
-VN_PRICE_DIR = r"c:\Users\Administrator\230163-DL4AI-project\data-vn-20230228\stock-historical-data"
+VN_PRICE_DIR = r"c:\Users\Admin\230163-DL4AI-project\data-vn-20230228\stock-historical-data"
 
 def _add_indicators(df):
     df = df.copy()
