@@ -6,7 +6,7 @@ from pydantic import BaseModel
 from typing import List
 
 app    = FastAPI(title="VN Stock Prediction API", version="1.0")
-MODEL  = tf.keras.models.load_model("saved_models/vn_price_model")
+MODEL  = tf.keras.models.load_model("saved_models/vn_price_model.keras")
 SCALER = pickle.load(open("saved_models/scaler_price.pkl", "rb"))
 META   = pickle.load(open("saved_models/meta.pkl", "rb"))
 WINDOW    = META["WINDOW"]

@@ -18,12 +18,12 @@ cells = {c["id"]: c for c in nb["cells"] if "id" in c}
 
 # ── paths ─────────────────────────────────────────────────────────────────
 cells["paths"]["source"] = r'''# set paths
-NASDAQ_DIR   = r"c:\Users\Administrator\230163-DL4AI-project\data_nasdaq_csv\csv"
-VN_PRICE_DIR = r"c:\Users\Administrator\230163-DL4AI-project\data-vn-20230228\stock-historical-data"
-VN_DIV_DIR   = r"c:\Users\Administrator\230163-DL4AI-project\data-vn-20230228\dividend-history"
-VN_FIN_DIR   = r"c:\Users\Administrator\230163-DL4AI-project\data-vn-20230228\financial-ratio"
-VN_COMPANIES = r"c:\Users\Administrator\230163-DL4AI-project\data-vn-20230228\companies.csv"
-VN_OVERVIEW  = r"c:\Users\Administrator\230163-DL4AI-project\data-vn-20230228\ticker-overview.csv"
+NASDAQ_DIR   = r"c:\Users\Admin\230163-DL4AI-project\data_nasdaq_csv\csv"
+VN_PRICE_DIR = r"c:\Users\Admin\230163-DL4AI-project\data-vn-20230228\stock-historical-data"
+VN_DIV_DIR   = r"c:\Users\Admin\230163-DL4AI-project\data-vn-20230228\dividend-history"
+VN_FIN_DIR   = r"c:\Users\Admin\230163-DL4AI-project\data-vn-20230228\financial-ratio"
+VN_COMPANIES = r"c:\Users\Admin\230163-DL4AI-project\data-vn-20230228\companies.csv"
+VN_OVERVIEW  = r"c:\Users\Admin\230163-DL4AI-project\data-vn-20230228\ticker-overview.csv"
 
 MIN_DAYS    = 200           # keep tickers with >= 200 trading days since cutoff
 WINDOW      = 45            # 45-day lookback — more context, still fast
